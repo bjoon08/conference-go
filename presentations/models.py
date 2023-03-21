@@ -47,6 +47,23 @@ class Presentation(models.Model):
         on_delete=models.CASCADE,
     )
 
+    def approve(self):
+        """
+        The method first retrieves a status object with the name "APPROVED"
+        using the get() method. It will retrieve a single object that matches
+        the specified criteria, which in this case is the status object
+        with the name "APPROVED"
+        """
+        status = Status.objects.get(name="APPROVED")
+        self.status = status
+        # you then proceed to save the changes to the database
+        self.save()
+
+    def reject(self):
+        status = Status.objects.get(name="REJECTED")
+        self.status = status
+        self.save()
+
     def get_api_url(self):
         return reverse("api_show_presentation", kwargs={"id": self.id})
 
