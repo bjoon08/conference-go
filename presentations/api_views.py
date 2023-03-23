@@ -3,6 +3,7 @@ from .models import Presentation, Status
 from common.json import ModelEncoder
 from django.views.decorators.http import require_http_methods
 import json
+from events.models import Conference
 
 
 class PresentationListEncoder(ModelEncoder):
@@ -13,7 +14,7 @@ class PresentationListEncoder(ModelEncoder):
     ]
 
     def get_extra_data(self, o):
-        return {"status": o.status}
+        return {"status": o.status.name}
 
 
 class PresentationDetailEncoder(ModelEncoder):
@@ -61,16 +62,23 @@ def api_list_presentations(request, conference_id):
         try:
             content = json.loads(request.body)
             status = Status.objects.get(id=content["status"])
+            conference = Conference.objects.get(id=conference_id)
             content["status"] = status
+            content["conference"] = conference
             presentation = Presentation.objects.create(**content)
             return JsonResponse(
                 presentation,
                 encoder=PresentationDetailEncoder,
                 safe=False,
             )
-        except KeyError:
+        # except KeyError:
+        #     return JsonResponse(
+        #         {"message": "status is missing in the request body"},
+        #         status=400,
+        #     )
+        except Conference.DoesNotExist:
             return JsonResponse(
-                {"message": "status is missing in the request body"},
+                {"message": "Invalid conference ID"},
                 status=400,
             )
         except Status.DoesNotExist:
@@ -114,7 +122,7 @@ def api_show_presentation(request, id):
             safe=False,
         )
     elif request.method == "DELETE":
-        count, _ =Presentation.objects.filter(id=id).delete()
+        count, _ = Presentation.objects.filter(id=id).delete()
         return JsonResponse({"deleted": count > 0})
     else:
         content = json.loads(request.body)
