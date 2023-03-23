@@ -1,8 +1,44 @@
 from django.http import JsonResponse
+from .models import Attendee, Badge
+from events.models import Conference
+from common.json import ModelEncoder
+from django.views.decorators.http import require_http_methods
+import json
 
-from .models import Attendee
+
+class AttendeeListEncoder(ModelEncoder):
+    model = Attendee
+    properties = [
+        "name",
+        "email",
+    ]
 
 
+class AttendeeDetailEncoder(ModelEncoder):
+    model = Attendee
+    properties = [
+        "name",
+        "email",
+        "company_name",
+        # "badge",
+    ]
+    """
+    Since badge is a related object, we need to customize the encoding
+    of that object. We can do that by overriding the 'default()' method.
+    """
+    def get_extra_data(self, o):
+        return {"badge": hasattr(o, "badge"), "conference": o.conference.name}
+    # def default(self, o):
+    #     # first we check to see if the object being encoded is an instance
+    #     # of Badge
+    #     if isinstance(o, Badge):
+    #         return {
+    #             "created": o.created.isoformat(),
+    #         }
+    #     return super().default(o)
+
+
+@require_http_methods(["GET", "POST"])
 def api_list_attendees(request, conference_id):
     """
     Lists the attendees names and the link to the attendee
@@ -23,14 +59,28 @@ def api_list_attendees(request, conference_id):
         ]
     }
     """
-    attendees = [
-        {
-            "name": a.name,
-            "href": a.get_api_url(),
-        }
-        for a in Attendee.objects.filter(conference=conference_id)
-    ]
-    return JsonResponse({"attendees": attendees})
+    if request.method == "GET":
+        attendees = Attendee.objects.filter(conference=conference_id)
+        return JsonResponse(
+            {"attendees": attendees},
+            encoder=AttendeeListEncoder,
+        )
+    else:
+        content = json.loads(request.body)
+        try:
+            conference = Conference.objects.get(id=conference_id)
+            content["conference"] = conference
+        except Conference.DoesNotExist:
+            return JsonResponse(
+                {"message": "Invalid conference id"},
+                status=400,
+            )
+        attendee = Attendee.objects.create(**content)
+        return JsonResponse(
+            attendee,
+            encoder=AttendeeDetailEncoder,
+            safe=False,
+        )
 
 
 def api_show_attendee(request, id):
@@ -54,15 +104,9 @@ def api_show_attendee(request, id):
     }
     """
     attendee = Attendee.objects.get(id=id)
+    attendee.create_badge()
     return JsonResponse(
-        {
-            "email": attendee.email,
-            "name": attendee.name,
-            "company_name": attendee.company_name,
-            "created": attendee.created,
-            "conference": {
-                "name": attendee.conference.name,
-                "href": attendee.conference.get_api_url(),
-            },
-        }
+        attendee,
+        encoder=AttendeeDetailEncoder,
+        safe=False,
     )
