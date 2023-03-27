@@ -146,7 +146,6 @@ def api_show_conference(request, id):
         Conference.objects.filter(id=id).update(**content)
         conference = Conference.objects.get(id=id)
 
-        # weather = get_weather(content["city"], content["state"])
         return JsonResponse(
             conference,
             encoder=ConferenceDetailEncoder,
