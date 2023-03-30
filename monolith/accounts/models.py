@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 
 
 class User(AbstractUser):
@@ -10,3 +11,4 @@ class User(AbstractUser):
     The custom user model for this project as advised by Django docs
     https://docs.djangoproject.com/en/4.0/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
     """
+    email = models.EmailField(unique=True)

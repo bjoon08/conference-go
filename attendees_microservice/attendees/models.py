@@ -1,6 +1,18 @@
 from django.db import models
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.timezone import now
+
+
+class AccountVO(models.Model):
+    email = models.EmailField()
+    first_name = models.CharField(max_length=20)
+    last_name = models.CharField(max_length=20)
+    is_active = models.BooleanField(default=True)
+    updated = models.DateTimeField(default=now)
+
+    # def __str__(self):
+    #     return self.email
 
 
 class ConferenceVO(models.Model):
@@ -28,6 +40,9 @@ class Attendee(models.Model):
     def __str__(self):
         return self.name
 
+    def get_api_url(self):
+        return reverse("api_show_attendee", kwargs={"id": self.id})
+
     def create_badge(self):
         """
         # the try block is used to check if the attendee already has a badge
@@ -45,9 +60,6 @@ class Attendee(models.Model):
             # using the create method
             """
             Badge.objects.create(attendee=self)
-
-    def get_api_url(self):
-        return reverse("api_show_attendee", kwargs={"id": self.id})
 
 
 class Badge(models.Model):

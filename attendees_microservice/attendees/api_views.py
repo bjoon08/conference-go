@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from .models import Attendee, ConferenceVO
+from .models import Attendee, ConferenceVO, AccountVO
 from common.json import ModelEncoder
 from django.views.decorators.http import require_http_methods
 import json
@@ -29,13 +29,29 @@ class AttendeeDetailEncoder(ModelEncoder):
         "company_name",
         # "badge",
     ]
+    encoders = {
+        "conference": ConferenceVODetailEncoder(),
+    }
+
+    def get_extra_data(self, o):
+        count = AccountVO.objects.filter(email=o.email).count()
+        if count > 0:
+            return {
+                "has_account": True
+            }
+        else:
+            return {
+                "has_account": False
+            }
+        # has_account = True if count > 0 else False
+        # return {"has_account": has_account}
     """
     Since badge is a related object, we need to customize the encoding
     of that object. We can do that by overriding the 'default()' method.
     """
 
-    def get_extra_data(self, o):
-        return {"badge": hasattr(o, "badge"), "conference": o.conference.name}
+    # def get_extra_data(self, o):
+    #     return {"badge": hasattr(o, "badge"), "conference": o.conference.name}
 
     # def default(self, o):
     #     # first we check to see if the object being encoded is an instance
@@ -81,6 +97,16 @@ def api_list_attendees(request, conference_vo_id=None):
             conference = ConferenceVO.objects.get(import_href=conference_href)
             content["conference"] = conference
         except ConferenceVO.DoesNotExist:
+            #     conference = ConferenceVO.objects.create(
+            #         import_href=conference_href
+            #         )
+            # content["conference"] = conference
+            # attendee = Attendee.objects.create(**content)
+            # return JsonResponse(
+            #     attendee,
+            #     encoder=AttendeeDetailEncoder,
+            #     safe=False,
+            # )
             return JsonResponse(
                 {"message": "Invalid conference id"},
                 status=400,
@@ -117,7 +143,7 @@ def api_show_attendee(request, id):
     if request.method == "GET":
         attendee = Attendee.objects.get(id=id)
         return JsonResponse(
-            {"attendee": attendee}, encoder=AttendeeListEncoder
+            {"attendee": attendee}, encoder=AttendeeDetailEncoder
             )
     elif request.method == "DELETE":
         count, _ = Attendee.objects.filter(id=id).delete()
